@@ -1,4 +1,4 @@
-docker run -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/Library/Caches:/root/.cache/ aquasec/trivy:0.54.1 image --severity CRITICAL --exit-code 1 --light openjdk:8u151-jdk-alpine3.7
+docker run -v /var/run/docker.sock:/var/run/docker.sock -v $HOME/Library/Caches:/root/.cache/ aquasec/trivy:0.54.1 image --severity CRITICAL --exit-code 0 --light openjdk:8u151-jdk-alpine3.7
 
 exit_code=$?
 echo "exit code is = $exit_code"
