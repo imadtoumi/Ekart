@@ -1,0 +1,73 @@
+pipeline {
+    agent any
+    
+    tools{
+        jdk 'jdk17'
+        maven 'maven'
+    }
+    
+    environment {
+        SCANNER_HOME = tool 'sonar-scanner'
+    }
+
+    stages {
+        stage('clean workspace'){
+            steps{
+                cleanWs()
+            }
+        }
+        
+        stage('git checkout') {
+            steps {
+                git branch: 'main', changelog: false, poll: false, url: 'https://github.com/imadtoumi/Ekart.git'
+            }
+        }
+        
+        stage('maven compile') {
+            steps {
+                sh 'mvn clean compile'
+            }
+        }
+        
+        stage('SonarQube analyse'){
+            steps{
+                withSonarQubeEnv('sonar-server') {
+                    sh '''$SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=E-kart \
+                    -Dsonar.projectKey=E-kart -Dsonar.java.binaries=target/classes'''
+                }        
+            }
+        }
+        
+        stage("security scaning") {
+            steps {
+                parallel(
+                    'Dependency check':{
+                        dependencyCheck additionalArguments: '--scan ./ --format HTML --out dependency_check.html ', odcInstallation: 'owasp'
+                        archiveArtifacts artifacts: 'dependency_check.html', allowEmptyArchive: false
+                    },
+                    'Base image scan':{
+                        sh 'bash scan.sh'
+                    },
+                    // 'Opa-Dockerfile scan':{
+                    //     sh 'docker run --rm -v $(pwd):/project openpolicyagent/conftest test --policy dockerfile-security.rego docker/Dockerfile'
+                    // }
+                )
+            }
+        }
+        
+        stage("Docker build and push") {
+            steps {
+                withDockerRegistry(credentialsId: 'Docker-cred', toolName: 'docker') {
+                    sh '''docker build -t imadtoumi/java-test-app:latest docker/. 
+                        docker push imadtoumi/java-test-app:latest'''
+                }
+            }
+        }
+        
+        // stage("Quality Gate") {
+        //     steps {
+        //     }
+        // }
+        
+    }
+}
